@@ -293,7 +293,7 @@ def create_grids(self, img_size=416, ng=(13, 13), device='cpu', type=torch.float
     self.ny = ny
 
 
-def load_darknet_weights(self, weights, cutoff=-1):
+def load_darknet_weights(model, weights, cutoff=-1):
     # Parses and loads the weights stored in 'weights'
 
     # Establish cutoffs (load layers between 0 and cutoff. if cutoff = -1 all are loaded)
@@ -306,13 +306,12 @@ def load_darknet_weights(self, weights, cutoff=-1):
     # Read weights file
     with open(weights, 'rb') as f:
         # Read Header https://github.com/AlexeyAB/darknet/issues/2914#issuecomment-496675346
-        self.version = np.fromfile(f, dtype=np.int32, count=3)  # (int32) version info: major, minor, revision
-        self.seen = np.fromfile(f, dtype=np.int64, count=1)  # (int64) number of images seen during training
+        model.version = np.fromfile(f, dtype=np.int32, count=3)  # (int32) version info: major, minor, revision
+        model.seen = np.fromfile(f, dtype=np.int64, count=1)  # (int64) number of images seen during training
 
         weights = np.fromfile(f, dtype=np.float32)  # The rest are weights
-
     ptr = 0
-    for i, (mdef, module) in enumerate(zip(self.module_defs[:cutoff], self.module_list[:cutoff])):
+    for i, (mdef, module) in enumerate(zip(model.module_defs[:cutoff], model.module_list[:cutoff])):
         if mdef['type'] == 'convolutional':
             conv_layer = module[0]
             if mdef['batch_normalize']:
@@ -345,7 +344,7 @@ def load_darknet_weights(self, weights, cutoff=-1):
                     #加载权重'yolov3.weights' 或者 'yolov3-tiny-weights.' 是为了更好初始化自己模型权重，要避免同名
                     num_b = 255
                     ptr += num_b
-                    num_w = int(self.module_defs[i-1]["filters"]) * 255
+                    num_w = int(model.module_defs[i-1]["filters"]) * 255
                     ptr += num_w
                 else:
                     # Load conv. bias
@@ -358,7 +357,7 @@ def load_darknet_weights(self, weights, cutoff=-1):
                     conv_w = torch.from_numpy(weights[ptr:ptr + num_w]).view_as(conv_layer.weight)
                     conv_layer.weight.data.copy_(conv_w)
                     ptr += num_w
-    assert ptr == len(weights)
+    # assert ptr == len(weights)
     return cutoff
 
 

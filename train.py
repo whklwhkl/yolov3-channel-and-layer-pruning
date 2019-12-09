@@ -91,12 +91,11 @@ def train():
             pg1 += [v]  # parameter group 1 (apply weight_decay)
         else:
             pg0 += [v]  # parameter group 0
-
     if opt.adam:
         optimizer = optim.Adam(pg0, lr=hyp['lr0'])
         # optimizer = AdaBound(pg0, lr=hyp['lr0'], final_lr=0.1)
     else:
-        optimizer = optim.SGD(pg0, lr=hyp['lr0'], momentum=hyp['momentum'], nesterov=True)
+        optimizer = optim.SGD(pg0, lr=hyp['lr0'], momentum=hyp['momentum'], nesterov=True)  # default
     optimizer.add_param_group({'params': pg1, 'weight_decay': hyp['weight_decay']})  # add pg1 with weight_decay
     del pg0, pg1
 
@@ -421,7 +420,7 @@ def train():
                 torch.save(chkpt, wdir + 'backup%g.pt' % epoch)
 
             # Delete checkpoint
-            del chkpt            
+            del chkpt
 
 
         # end epoch ----------------------------------------------------------------------------------------------------

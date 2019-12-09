@@ -620,16 +620,16 @@ def letterbox(img, new_shape=416, color=(128, 128, 128), mode='auto', interp=cv2
     new_unpad = (int(round(shape[1] * r)), int(round(shape[0] * r)))
 
     # Compute padding https://github.com/ultralytics/yolov3/issues/232
-    if mode is 'auto':  # minimum rectangle
+    if mode == 'auto':  # minimum rectangle
         dw = np.mod(new_shape - new_unpad[0], 32) / 2  # width padding
         dh = np.mod(new_shape - new_unpad[1], 32) / 2  # height padding
-    elif mode is 'square':  # square
+    elif mode == 'square':  # square
         dw = (new_shape - new_unpad[0]) / 2  # width padding
         dh = (new_shape - new_unpad[1]) / 2  # height padding
-    elif mode is 'rect':  # square
+    elif mode == 'rect':  # square
         dw = (new_shape[1] - new_unpad[0]) / 2  # width padding
         dh = (new_shape[0] - new_unpad[1]) / 2  # height padding
-    elif mode is 'scaleFill':
+    elif mode == 'scaleFill':
         dw, dh = 0.0, 0.0
         new_unpad = (new_shape, new_shape)
         ratio = new_shape / shape[1], new_shape / shape[0]  # width, height ratios
@@ -763,6 +763,7 @@ def cutout(image, labels):
 
 
 def convert_images2bmp():
+    breakpoint()
     # cv2.imread() jpg at 230 img/s, *.bmp at 400 img/s
     for path in ['../coco/images/val2014/', '../coco/images/train2014/']:
         folder = os.sep + Path(path).name
