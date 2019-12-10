@@ -1,0 +1,63 @@
+import argparse
+
+ap = argparse.ArgumentParser()
+ap.add_argument('--src_data', default='data/coco.data')
+ap.add_argument('--dst_data', default='data/coco-person.data')
+args = ap.parse_args()
+
+cfg = {}
+with open(args.src_data) as fr:
+    for l in fr:
+        k,v = map(str.strip, l.split('='))
+        cfg[k] = v
+
+import os.path as osp
+outputs = osp.splitext(args.dst_data)[0]
+
+import os
+
+from glob import glob
+from tqdm import tqdm
+from shutil import copy
+
+
+def maybe_create_folder(folder_name):
+    if osp.exists(folder_name)==False:
+        os.mkdir(folder_name)
+
+
+maybe_create_folder(outputs)
+maybe_create_folder(osp.join(outputs, 'labels'))
+maybe_create_folder(osp.join(outputs, 'images'))
+
+for split, saveAs in zip(map(osp.expanduser, [cfg['valid'], cfg['train']]),
+                         ['valid.txt', 'train.txt']):
+    useful = []
+    for l in tqdm(open(split).readlines(), desc=osp.basename(split)):
+        image_path = l.strip()
+        label_path = image_path.replace('images', 'labels').replace('.jpg', '.txt')
+
+        image = osp.basename(image_path)
+        label = osp.splitext(image)[0]+'.txt'
+
+        if osp.exists(label_path)==False: continue
+        p = [line for line in open(label_path) if line.split()[0]=='0'] # '0' for person in COCO
+        if len(p)==0: continue
+        image = osp.join(outputs, 'images', image)
+        useful.append(image)
+        copy(image_path, image)
+        with open(osp.join(outputs, 'labels', label), 'w') as fw:
+            for line in p:
+                fw.writelines(line)
+    cfg[saveAs.split('.')[0]] = label_list_path = osp.join(outputs, saveAs)
+    with open(label_list_path, 'w') as fw:
+        for u in useful:
+            print(u.strip(), file=fw)
+
+cfg['names'] = args.dst_data.replace('.data', '.names')
+print('person', file=open(cfg['names'], 'w'))
+cfg['classes']=1
+cfg['eval'] = 'single'
+with open(args.dst_data, 'w') as fw:
+    for k,v in cfg.items():
+        print(f'{k}={v}', file=fw)
