@@ -161,6 +161,8 @@ class YOLOLayer(nn.Module):
             xy = torch.sigmoid(p[..., 0:2]) + grid_xy[0]  # x, y
             wh = torch.exp(p[..., 2:4]) * anchor_wh[0]  # width, height
             p_conf = torch.sigmoid(p[:, 4:5])  # Conf
+            if self.nc==0:
+                return torch.cat((xy / ngu[0], wh, p_conf), 1).t()
             p_cls = F.softmax(p[:, 5:85], 1) * p_conf  # SSD-like conf
             return torch.cat((xy / ngu[0], wh, p_conf, p_cls), 1).t()
 
@@ -250,6 +252,8 @@ class Darknet(nn.Module):
         elif ONNX_EXPORT:
             output = torch.cat(output, 1)  # cat 3 layers 85 x (507, 2028, 8112) to 85 x 10647
             nc = self.module_list[self.yolo_layers[0]].nc  # number of classes
+            if nc==0:
+                return output[:4].t(), output[4]
             return output[:4].t(), output[4], output[5:].t(),   # box:(xc, yc, w, h) from 0 to 1, obj_score, class_conf
             # return output[5:5 + nc].t(), output[:4].t()  # ONNX scores, boxes
         else:

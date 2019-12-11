@@ -12,7 +12,7 @@ from utils.utils import *
 
 
 def trace(save_txt=False, save_img=False):
-    img_size = (320, 192) if ONNX_EXPORT else opt.img_size  # (320, 192) or (416, 256) or (608, 352) for (height, width)
+    img_size = opt.input_height, opt.input_width
     # Initialize model
     model = Darknet(opt.cfg, img_size)
 
@@ -48,11 +48,12 @@ def trace(save_txt=False, save_img=False):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--cfg', type=str, default='cfg/yolov3-spp.cfg', help='cfg file path')
-    parser.add_argument('--weights', type=str, default='weights/yolov3-spp.weights', help='path to weights file')
-    parser.add_argument('--img-size', type=int, default=416, help='inference size (pixels)')
+    parser.add_argument('--cfg', type=str, default='cfg/yolov3.cfg', help='cfg file path')
+    parser.add_argument('--weights', type=str, default='weights/yolov3.weights', help='path to weights file')
+    parser.add_argument('--input_width', type=int, default=416, help='inference width (pixels)')
+    parser.add_argument('--input_height', type=int, default=416, help='inference height (pixels)')
+    parser.add_argument('--device', default='cpu', help='device: cuda or cpu')
     parser.add_argument('--half', action='store_true', help='half precision FP16 inference')
-    parser.add_argument('--device', default='cpu', help='device id (i.e. 0 or 0,1) or cpu')
     opt = parser.parse_args()
     print(opt)
 
