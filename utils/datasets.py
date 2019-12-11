@@ -769,7 +769,7 @@ def cutout(image, labels):
 
 
 def convert_images2bmp():
-    breakpoint()
+    raise NotImplementedError
     # cv2.imread() jpg at 230 img/s, *.bmp at 400 img/s
     for path in ['../coco/images/val2014/', '../coco/images/train2014/']:
         folder = os.sep + Path(path).name

@@ -88,8 +88,8 @@ def detect(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', '-m', type=str, default='weights/half_h320_w192.pt', help='path to jit model file')
-    parser.add_argument('--source', type=str, default='data/samples', help='path to image folder')  # input file/folder, 0 for webcam
-    parser.add_argument('--output', type=str, default='output', help='output folder')  # output folder
+    parser.add_argument('--source', type=str, default='data/samples', help='path to image folder')
+    parser.add_argument('--output', type=str, default='output', help='output folder')
     parser.add_argument('--conf-thres', type=float, default=0.3, help='object confidence threshold')
     parser.add_argument('--nms-thres', type=float, default=0.5, help='iou threshold for non-maximum suppression')
     detect(parser.parse_args())

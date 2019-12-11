@@ -15,6 +15,7 @@ from tqdm import tqdm
 from . import torch_utils  # , google_utils
 
 matplotlib.rc('font', **{'size': 11})
+matplotlib.use('Agg')
 
 # Set printoptions
 torch.set_printoptions(linewidth=320, precision=5, profile='long')
