@@ -2,7 +2,7 @@ import argparse
 from sys import platform
 
 from models import *  # set ONNX_EXPORT in models.py
-from utils.datasets import *
+from utils.datasets import LoadImages, LoadStreams, LoadWebcam
 from utils.utils import *
 
 
@@ -65,9 +65,14 @@ def detect(save_txt=False, save_img=False):
 
         # Get detections
         img = torch.from_numpy(img).to(device)
+        breakpoint()
         if img.ndimension() == 3:
             img = img.unsqueeze(0)
-        pred, _ = model(img)
+        if ONNX_EXPORT:
+            pred = model(img)
+        else:
+            pred, _ = model(img)
+        breakpoint()
 
         if opt.half:
             pred = pred.float()

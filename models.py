@@ -250,7 +250,8 @@ class Darknet(nn.Module):
         elif ONNX_EXPORT:
             output = torch.cat(output, 1)  # cat 3 layers 85 x (507, 2028, 8112) to 85 x 10647
             nc = self.module_list[self.yolo_layers[0]].nc  # number of classes
-            return output[5:5 + nc].t(), output[:4].t()  # ONNX scores, boxes
+            return output[:4].t(), output[4], output[5:].t(),   # box:(xc, yc, w, h) from 0 to 1, obj_score, class_conf
+            # return output[5:5 + nc].t(), output[:4].t()  # ONNX scores, boxes
         else:
             io, p = list(zip(*output))  # inference output, training output
             return torch.cat(io, 1), p
@@ -288,7 +289,7 @@ def create_grids(self, img_size=416, ng=(13, 13), device='cpu', type=torch.float
     # build wh gains
     self.anchor_vec = self.anchors.to(device) / self.stride
     self.anchor_wh = self.anchor_vec.view(1, self.na, 1, 1, 2).to(device).type(type)
-    self.ng = torch.Tensor(ng).to(device)
+    self.ng = torch.Tensor(ng).type(type).to(device)
     self.nx = nx
     self.ny = ny
 

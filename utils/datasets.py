@@ -621,8 +621,14 @@ def letterbox(img, new_shape=416, color=(128, 128, 128), mode='auto', interp=cv2
 
     # Compute padding https://github.com/ultralytics/yolov3/issues/232
     if mode == 'auto':  # minimum rectangle
-        dw = np.mod(new_shape - new_unpad[0], 32) / 2  # width padding
-        dh = np.mod(new_shape - new_unpad[1], 32) / 2  # height padding
+        if isinstance(new_shape, int):
+            new_shape_w = new_shape_h = new_shape
+        elif isinstance(new_shape, tuple):
+            new_shape_w, new_shape_h = new_shape
+        else:
+            raise NotImplementedError(f'weird shape {new_shape}')
+        dw = np.mod(new_shape_w - new_unpad[0], 32) / 2  # width padding
+        dh = np.mod(new_shape_h - new_unpad[1], 32) / 2  # height padding
     elif mode == 'square':  # square
         dw = (new_shape - new_unpad[0]) / 2  # width padding
         dh = (new_shape - new_unpad[1]) / 2  # height padding
