@@ -26,13 +26,15 @@ def infer(model, image:torch.Tensor, confidence_threshold:float, iou_threshold:f
     """
     with torch.no_grad():
         # outputs range from 0 to 1
-        box, obj_prob, pred = model(image[None])  # box:(xc, yc, w, h), obj_score, class_conf
+        ret = model(image[None])
+        box, obj_prob = ret[:2]  # box:(xc, yc, w, h), obj_score
         box_wh = box[:, 2:] / 2
         box_xy = box[:, :2]
         box = torch.cat([box_xy - box_wh, box_xy + box_wh], 1)  # left, top, right, bottom
         keep = torch.where(obj_prob > confidence_threshold)[0]
-        keep = keep[nms(box[keep], obj_prob[keep], iou_threshold)]
-    return box[keep], pred[keep]
+        obj_prob = obj_prob[keep]
+        keep = keep[nms(box[keep], obj_prob, iou_threshold)]
+    return box[keep], ret[2][keep] if len(ret) > 2 else obj_prob  # class_conf or obj_score
 
 
 def postprocess(box:torch.Tensor, img_shape):

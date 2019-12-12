@@ -163,7 +163,7 @@ class YOLOLayer(nn.Module):
             p_conf = torch.sigmoid(p[:, 4:5])  # Conf
             if self.nc==0:
                 return torch.cat((xy / ngu[0], wh, p_conf), 1).t()
-            p_cls = F.softmax(p[:, 5:85], 1) * p_conf  # SSD-like conf
+            p_cls = F.softmax(p[:, 5:], 1) * p_conf  # SSD-like conf
             return torch.cat((xy / ngu[0], wh, p_conf, p_cls), 1).t()
 
             # p = p.view(1, -1, 5 + self.nc)

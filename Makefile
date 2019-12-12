@@ -1,15 +1,15 @@
+H=416
+W=416
+
+
 export:
-	for h in `seq 128 64 320`;do \
-		for w in `seq 64 64 320`;do \
-			python jit_trace.py \
-				--cfg cfg/yolov3.cfg \
-				--weights weights/best.pt \
-				--device cuda \
-				--half \
-				--input_height $$h \
-				--input_width $$w; \
-		done; \
-	done;
+	python jit_trace.py \
+		--cfg cfg/final.cfg \
+		--weights weights/final.weights \
+		--device cuda \
+		--half \
+		--input_height ${H} \
+		--input_width ${W}
 
 
 train:
@@ -21,10 +21,24 @@ train:
 	  --batch-size 60
 
 
+CFG=yolov3-hand.cfg
+
+
+reduce_class:
+	python simplify_det_head.py cfg/${CFG} weights/best.pt weights/person.weights 0
+
+
+DATA=coco-person.data
+
+
+reduce_data:
+	python utils/extract_coco_person_data.py
+
+
 sparsify:
 	python train.py \
-	  --cfg cfg/yolov3-hand.cfg \
-	  --data data/coco-person.data \
+	  --cfg cfg/${CFG} \
+	  --data data/${DATA} \
 	  --weights weights/person.weights \
 	  --epochs 300 \
 	  --batch-size 88 \
@@ -33,27 +47,42 @@ sparsify:
 	  --prune 1
 
 
+CHANNEL=0.74375
+KEEP=0.1
+
+
 channel:
 	python slim_prune.py \
-	  --cfg cfg/yolov3.cfg \
-	  --data data/coco.data \
+	  --cfg cfg/${CFG} \
+	  --data data/${DATA} \
 	  --weights weights/last.pt \
-	  --global_percent 0.8 \
-	  --layer_keep 0.01
+	  --global_percent ${CHANNEL} \
+	  --layer_keep ${KEEP}
+
+
+LAYER=3
 
 
 layer:
 	python layer_prune.py \
-	  --cfg cfg/yolov3.cfg \
-	  --data data/coco.data \
-	  --weights weights/last.pt \
-	  --shortcuts 12
+	  --cfg cfg/prune_${CHANNEL}_keep_${KEEP}_${CFG} \
+	  --data data/${DATA} \
+	  --weights weights/prune_${CHANNEL}_keep_${KEEP}_last.weights \
+	  --shortcuts ${LAYER}
 
 
 finetune:
 	python train.py \
-	  --cfg cfg/prune_0.85_my_cfg.cfg \
-	  --data data/coco.data \
-	  --weights weights/prune_0.85_last.weights \
+	  --cfg cfg/prune_${LAYER}_shortcut_prune_${CHANNEL}_keep_${KEEP}_${CFG} \
+	  --data data/${DATA} \
+	  --weights weights/prune_${LAYER}_shortcut_prune_${CHANNEL}_keep_${KEEP}_last.weights \
 	  --epochs 100 \
-	  --batch-size 32
+	  --batch-size 96
+
+
+finalize:
+	python simplify_det_head.py \
+		cfg/prune_${LAYER}_shortcut_prune_${CHANNEL}_keep_${KEEP}_${CFG} \
+		weights/best.pt \
+		weights/final.weights \
+		-1
