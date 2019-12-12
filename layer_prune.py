@@ -56,14 +56,14 @@ if __name__ == '__main__':
     # for i, idx in enumerate(shortcut_idx):
     #     highest_thre[i] = model.module_list[idx][1].weight.data.abs().max().clone()
     # _, sorted_index_thre = torch.sort(highest_thre)
-    
+
     #这里更改了选层策略，由最大值排序改为均值排序，均值一般表现要稍好，但不是绝对，可以自己切换尝试；前面注释的四行为原策略。
     bn_mean = torch.zeros(len(shortcut_idx))
     for i, idx in enumerate(shortcut_idx):
         bn_mean[i] = model.module_list[idx][1].weight.data.abs().mean().clone()
     _, sorted_index_thre = torch.sort(bn_mean)
-    
-    
+
+
     prune_shortcuts = torch.tensor(shortcut_idx)[[sorted_index_thre[:opt.shortcuts]]]
     prune_shortcuts = [int(x) for x in prune_shortcuts]
 
@@ -85,9 +85,9 @@ if __name__ == '__main__':
             for i in [idx, idx-1]:
                 bn_module = model_copy.module_list[i][1]
 
-                mask = torch.zeros(bn_module.weight.data.shape[0]).cuda()
+                mask = torch.zeros(bn_module.weight.data.shape[0]).to(device)
                 bn_module.weight.data.mul_(mask)
-         
+
 
         with torch.no_grad():
             mAP = eval_model(model_copy)[0][2]
@@ -197,4 +197,3 @@ if __name__ == '__main__':
 
     save_weights(compact_model, path=compact_model_name)
     print(f'Compact model has been saved: {compact_model_name}')
-

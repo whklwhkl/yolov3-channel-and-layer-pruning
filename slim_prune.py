@@ -23,7 +23,9 @@ if __name__ == '__main__':
 
     img_size = opt.img_size
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = Darknet(opt.cfg, (img_size, img_size)).to(device)
+    # device = 'cpu'  # if there's no enough memory on GPU
+    model = Darknet(opt.cfg, (img_size, img_size))
+    model.to(device)
 
     if opt.weights.endswith(".pt"):
         model.load_state_dict(torch.load(opt.weights, map_location=device)['model'])
@@ -49,7 +51,7 @@ if __name__ == '__main__':
     sorted_bn = torch.sort(bn_weights)[0]
     sorted_bn, sorted_index = torch.sort(bn_weights)
     thresh_index = int(len(bn_weights) * opt.global_percent)
-    thresh = sorted_bn[thresh_index].cuda()
+    thresh = sorted_bn[thresh_index].to(device)
 
     print(f'Global Threshold should be less than {thresh:.4f}.')
 
@@ -68,14 +70,14 @@ if __name__ == '__main__':
             if idx in prune_idx:
 
                 weight_copy = bn_module.weight.data.abs().clone()
-                
+
                 channels = weight_copy.shape[0] #
                 min_channel_num = int(channels * opt.layer_keep) if int(channels * opt.layer_keep) > 0 else 1
                 mask = weight_copy.gt(thresh).float()
-                
-                if int(torch.sum(mask)) < min_channel_num: 
+
+                if int(torch.sum(mask)) < min_channel_num:
                     _, sorted_index_weights = torch.sort(weight_copy,descending=True)
-                    mask[sorted_index_weights[:min_channel_num]]=1. 
+                    mask[sorted_index_weights[:min_channel_num]]=1.
                 remain = int(mask.sum())
                 pruned = pruned + mask.shape[0] - remain
 
@@ -112,7 +114,7 @@ if __name__ == '__main__':
 
         for idx in CBL_idx:
             bn_module = model_copy.module_list[idx][1]
-            mask = CBLidx2mask[idx].cuda()
+            mask = CBLidx2mask[idx].to(device)
             bn_module.weight.data.mul_(mask)
 
         with torch.no_grad():
@@ -129,7 +131,7 @@ if __name__ == '__main__':
 
 
 
-    pruned_model = prune_model_keep_size2(model, prune_idx, CBL_idx, CBLidx2mask)
+    pruned_model = prune_model_keep_size2(model, prune_idx, CBL_idx, CBLidx2mask, device)
     print("\nnow prune the model but keep size,(actually add offset of BN beta to following layers), let's see how the mAP goes")
 
     with torch.no_grad():
@@ -159,14 +161,14 @@ if __name__ == '__main__':
         start = time.time()
         with torch.no_grad():
             for i in range(repeat):
-                output = model(input)
+                model(input)
         avg_infer_time = (time.time() - start) / repeat
 
-        return avg_infer_time, output
+        return avg_infer_time
 
     print('testing inference time...')
-    pruned_forward_time, pruned_output = obtain_avg_forward_time(random_input, pruned_model)
-    compact_forward_time, compact_output = obtain_avg_forward_time(random_input, compact_model)
+    pruned_forward_time = obtain_avg_forward_time(random_input, pruned_model)
+    compact_forward_time = obtain_avg_forward_time(random_input, compact_model)
 
 
     print('testing the final model...')
@@ -193,4 +195,3 @@ if __name__ == '__main__':
         compact_model_name = compact_model_name.replace('.pt', '.weights')
     save_weights(compact_model, path=compact_model_name)
     print(f'Compact model has been saved: {compact_model_name}')
-
