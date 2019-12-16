@@ -1,12 +1,16 @@
 from models import *
 from utils.utils import *
+
+
+import argparse
 import numpy as np
+import time
+
 from copy import deepcopy
+from math import ceil
 from test import test
 from terminaltables import AsciiTable
-import time
 from utils.prune_utils import *
-import argparse
 
 
 
@@ -18,6 +22,7 @@ if __name__ == '__main__':
     parser.add_argument('--global_percent', type=float, default=0.8, help='global channel prune percent')
     parser.add_argument('--layer_keep', type=float, default=0.01, help='channel keep percent per layer')
     parser.add_argument('--img_size', type=int, default=416, help='inference size (pixels)')
+    parser.add_argument('--groups', type=int, default=8, help='make sure number of filters are multiplier of this number')
     opt = parser.parse_args()
     print(opt)
 
@@ -37,10 +42,10 @@ if __name__ == '__main__':
     eval_model = lambda model:test(model=model,cfg=opt.cfg, data=opt.data)
     obtain_num_parameters = lambda model:sum([param.nelement() for param in model.parameters()])
 
-    print("\nlet's test the original model first:")
-    with torch.no_grad():
-        origin_model_metric = eval_model(model)
-    origin_nparameters = obtain_num_parameters(model)
+    # print("\nlet's test the original model first:")
+    # with torch.no_grad():
+    #     origin_model_metric = eval_model(model)
+    # origin_nparameters = obtain_num_parameters(model)
 
     CBL_idx, Conv_idx, prune_idx, _, _= parse_module_defs2(model.module_defs)
 
@@ -58,7 +63,6 @@ if __name__ == '__main__':
 
 
 
-    #%%
     def obtain_filters_mask(model, thre, CBL_idx, prune_idx):
 
         pruned = 0
@@ -73,7 +77,15 @@ if __name__ == '__main__':
 
                 channels = weight_copy.shape[0] #
                 min_channel_num = int(channels * opt.layer_keep) if int(channels * opt.layer_keep) > 0 else 1
-                mask = weight_copy.gt(thresh).float()
+                min_channel_num = ceil(min_channel_num / opt.groups) * opt.groups
+                thre_map = {weight_copy.gt(w).sum().item():w.item() for w in weight_copy}
+                t = None
+                for n in sorted(thre_map.keys()):
+                    if n % opt.groups: continue
+                    t = thre_map[n]
+                    if t < thre:
+                        break
+                mask = weight_copy.gt(t or thre).float()
 
                 if int(torch.sum(mask)) < min_channel_num:
                     _, sorted_index_weights = torch.sort(weight_copy,descending=True)
@@ -132,10 +144,10 @@ if __name__ == '__main__':
 
 
     pruned_model = prune_model_keep_size2(model, prune_idx, CBL_idx, CBLidx2mask, device)
-    print("\nnow prune the model but keep size,(actually add offset of BN beta to following layers), let's see how the mAP goes")
+    # print("\nnow prune the model but keep size,(actually add offset of BN beta to following layers), let's see how the mAP goes")
 
-    with torch.no_grad():
-        eval_model(pruned_model)
+    # with torch.no_grad():
+        # eval_model(pruned_model)
 
     for i in model.module_defs:
         if i['type'] == 'shortcut':
@@ -155,34 +167,34 @@ if __name__ == '__main__':
 
     random_input = torch.rand((1, 3, img_size, img_size)).to(device)
 
-    def obtain_avg_forward_time(input, model, repeat=200):
-
-        model.eval()
-        start = time.time()
-        with torch.no_grad():
-            for i in range(repeat):
-                model(input)
-        avg_infer_time = (time.time() - start) / repeat
-
-        return avg_infer_time
+    # def obtain_avg_forward_time(input, model, repeat=200):
+    #
+    #     model.eval()
+    #     start = time.time()
+    #     with torch.no_grad():
+    #         for i in range(repeat):
+    #             model(input)
+    #     avg_infer_time = (time.time() - start) / repeat
+    #
+    #     return avg_infer_time
 
     print('testing inference time...')
     pruned_forward_time = obtain_avg_forward_time(random_input, pruned_model)
     compact_forward_time = obtain_avg_forward_time(random_input, compact_model)
 
 
-    print('testing the final model...')
-    with torch.no_grad():
-        compact_model_metric = eval_model(compact_model)
+    # print('testing the final model...')
+    # with torch.no_grad():
+    #     compact_model_metric = eval_model(compact_model)
 
 
-    metric_table = [
-        ["Metric", "Before", "After"],
-        ["mAP", f'{origin_model_metric[0][2]:.6f}', f'{compact_model_metric[0][2]:.6f}'],
-        ["Parameters", f"{origin_nparameters}", f"{compact_nparameters}"],
-        ["Inference", f'{pruned_forward_time:.4f}', f'{compact_forward_time:.4f}']
-    ]
-    print(AsciiTable(metric_table).table)
+    # metric_table = [
+    #     ["Metric", "Before", "After"],
+    #     ["mAP", f'{origin_model_metric[0][2]:.6f}', f'{compact_model_metric[0][2]:.6f}'],
+    #     ["Parameters", f"{origin_nparameters}", f"{compact_nparameters}"],
+    #     ["Inference", f'{pruned_forward_time:.4f}', f'{compact_forward_time:.4f}']
+    # ]
+    # print(AsciiTable(metric_table).table)
 
 
 
