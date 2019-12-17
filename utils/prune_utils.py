@@ -130,6 +130,8 @@ def write_cfg(cfg_file, module_defs):
                 if key != 'type':
                     if key == 'anchors':
                         value = ', '.join(','.join(str(int(i)) for i in j) for j in value)
+                    elif key == 'ind_in' or key == 'ind_out':
+                        value = ', '.join(map(str,value))
                     f.write(f"{key}={value}\n")
             f.write("\n")
     return cfg_file
@@ -421,3 +423,11 @@ def merge_mask(model, CBLidx2mask, CBLidx2filters):
                     if bn:
                         CBLidx2mask[layer_i] = merge_mask
                         CBLidx2filters[layer_i] = int(torch.sum(merge_mask).item())
+
+
+def obtain_avg_forward_time(input, model):
+    from thop import profile
+    model.eval()
+    flop, param = profile(model, [input], verbose=False)
+    print(f'FLOP: {flop/1024**3:.3f}G, PARAM: {param/1024**2:.3f}M')
+    return flop, param

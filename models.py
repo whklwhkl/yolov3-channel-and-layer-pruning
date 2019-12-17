@@ -29,7 +29,8 @@ def create_modules(module_defs, img_size, arc):
                                                    kernel_size=kernel_size,
                                                    stride=int(mdef['stride']),
                                                    padding=pad,
-                                                   bias=not bn))
+                                                   bias=not bn,
+                                                   groups=int(mdef.get('groups') or 1)))
             if bn:
                 modules.add_module('BatchNorm2d', nn.BatchNorm2d(filters, momentum=0.1))
             if mdef['activation'] == 'leaky':  # TODO: activation study https://github.com/ultralytics/yolov3/issues/441
@@ -316,9 +317,25 @@ def load_darknet_weights(model, weights, cutoff=-1):
 
         weights = np.fromfile(f, dtype=np.float32)  # The rest are weights
     ptr = 0
+    def make_pre_forward_hook(ind_in):
+        def hook(m, x):
+            return x[0][:, ind_in]
+        return hook
+    def make_forward_hook(ind_out):
+        def hook(m, x, y):
+            return y[:, ind_out]
+        return hook
     for i, (mdef, module) in enumerate(zip(model.module_defs[:cutoff], model.module_list[:cutoff])):
         if mdef['type'] == 'convolutional':
-            conv_layer = module[0]
+            conv_layer = module[0]  # type: nn.Conv2d
+            num_w = conv_layer.weight.numel()
+            if 'ind_in' in mdef:
+                ind_in = [int(x) for x in mdef['ind_in'].split(', ')]
+                conv_layer.register_forward_pre_hook(make_pre_forward_hook(ind_in))
+                # conv_layer.register_forward_pre_hook(lambda m,x:x[:, ind_in])
+            if 'ind_out' in mdef:
+                ind_out = [int(x) for x in mdef['ind_out'].split(', ')]
+                conv_layer.register_forward_hook(make_forward_hook(ind_out))
             if mdef['batch_normalize']:
                 # Load BN bias, weights, running mean and running variance
                 bn_layer = module[1]
@@ -340,15 +357,15 @@ def load_darknet_weights(model, weights, cutoff=-1):
                 bn_layer.running_var.data.copy_(bn_rv)
                 ptr += num_b
                 # Load conv. weights
-                num_w = conv_layer.weight.numel()
                 conv_w = torch.from_numpy(weights[ptr:ptr + num_w]).view_as(conv_layer.weight)
-                conv_layer.weight.data.copy_(conv_w)
+                # conv_layer.weight.data.copy_(conv_w)
                 ptr += num_w
             else:
                 if os.path.basename(file) == 'yolov3.weights' or os.path.basename(file) == 'yolov3-tiny.weights' or os.path.basename(file) == 'yolov3-spp.weights':
                     #加载权重'yolov3.weights' 或者 'yolov3-tiny-weights.' 是为了更好初始化自己模型权重，要避免同名
                     num_b = 255
                     ptr += num_b
+                    assert num_w==int(model.module_defs[i-1]["filters"]) * 255
                     num_w = int(model.module_defs[i-1]["filters"]) * 255
                     ptr += num_w
                 else:
@@ -358,7 +375,6 @@ def load_darknet_weights(model, weights, cutoff=-1):
                     conv_layer.bias.data.copy_(conv_b)
                     ptr += num_b
                     # Load conv. weights
-                    num_w = conv_layer.weight.numel()
                     conv_w = torch.from_numpy(weights[ptr:ptr + num_w]).view_as(conv_layer.weight)
                     conv_layer.weight.data.copy_(conv_w)
                     ptr += num_w
@@ -389,7 +405,10 @@ def save_weights(self, path='model.weights', cutoff=-1):
                 else:
                     conv_layer.bias.data.cpu().numpy().tofile(f)
                 # Load conv weights
-                conv_layer.weight.data.cpu().numpy().tofile(f)
+                try:
+                    conv_layer.weight.data.cpu().numpy().tofile(f)
+                except:
+                    breakpoint()
 
 
 def convert(cfg='cfg/yolov3-spp.cfg', weights='weights/yolov3-spp.weights'):
