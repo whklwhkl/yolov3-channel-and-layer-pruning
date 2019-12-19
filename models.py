@@ -358,7 +358,7 @@ def load_darknet_weights(model, weights, cutoff=-1):
                 ptr += num_b
                 # Load conv. weights
                 conv_w = torch.from_numpy(weights[ptr:ptr + num_w]).view_as(conv_layer.weight)
-                # conv_layer.weight.data.copy_(conv_w)
+                conv_layer.weight.data.copy_(conv_w)
                 ptr += num_w
             else:
                 if os.path.basename(file) == 'yolov3.weights' or os.path.basename(file) == 'yolov3-tiny.weights' or os.path.basename(file) == 'yolov3-spp.weights':
