@@ -12,6 +12,10 @@ export:
 		--input_width ${W}
 
 
+anchor:
+	python -c "from utils.utils import kmeans_targets; kmeans_targets('data/coco-person-bag/train.txt')"
+
+
 train:
 	python train.py \
 	  --cfg cfg/yolov3.cfg \
@@ -19,6 +23,17 @@ train:
 	  --weights weights/yolov3.weights \
 	  --epochs 100 \
 	  --batch-size 60
+
+
+train2:
+	python train.py \
+		--cfg cfg/yolov3-spp-4cls.cfg \
+		--data data/coco-person-bag.data \
+		--epochs 100 \
+		--batch-size 64 \
+		-sr \
+		--s 0.00001 \
+		--prune 1
 
 
 CFG=yolov3-hand.cfg
